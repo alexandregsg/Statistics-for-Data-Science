@@ -1,0 +1,704 @@
+---
+title: The Impact of Political and Governance Indicators on Renewable Energy Investment in the EU
+author:
+  - name: "Alexandre Gonçalves 20240738"
+  - name: "Bráulio Damba 2024007"
+  - name: "Bruna Simões 20240491"
+  - name: "Victoria Goon 20240550"
+
+
+column_numbers: 3 # to change colsx\
+logoleft_name: "logo.png"
+output: 
+  posterdown::posterdown_html:
+    self_contained: false
+
+---
+```{css, echo=FALSE}
+
+.body, .poster_title, .poster_body {
+    font-family: "Helvetica Neue", sans-serif;
+}
+
+
+
+div.title_container {
+  background-color: #8bc34a;
+  border: 2mm solid #8bc34a;
+}
+
+div.logo_left{
+  background-color: #8bc34a;
+}
+div.logo_right{
+  background-color: #8bc34a;
+}
+
+.poster_title h1 {
+    font-size: 75pt;
+    margin: 20px;
+    border: 0;
+    font-weight: normal;
+    top: 50%;
+}
+
+.poster_title h5 {
+    color: ##f5f5f5;
+    font-size: 35pt;
+    margin: -50px;
+    border: 0;
+    font-weight: normal;
+}
+
+body {
+    margin: 0;
+    font-size: 31px;
+    width: 45in;
+    height: 38in;
+    padding: 0;
+    text-align: justify;
+    font-family: Palatino;
+}
+
+
+
+.poster_body h1 {
+    text-align: center;
+    color: ##f5f5f5;
+    font-size: 38pt;
+    border: 0.5mm solid #8bc34a;
+    background-color: #8bc34a;
+    border-radius: 4mm 0mm;
+    margin-top: 2mm;
+    margin-bottom: 2mm;
+    font-weight: normal;
+}
+
+.poster_body h2 {
+    color: ##f5f5f5;
+    padding-left: 4mm;
+    font-weight: bold;
+}
+
+
+.column_break {
+  column-break-before: always; /* For multi-column layouts */
+}
+
+.table caption {
+    font-size: 30pt;
+    padding-bottom: 3mm;
+}
+
+.caption {
+  font-size: 30pt; /* Adjust to your desired size */
+  font-weight: normal; /* Remove bold if needed */
+  text-align: center; /* Optional: center-align the caption */
+  color: black; /* Optional: ensure the color is visible */
+}
+
+
+/* Add this below */
+caption > span {
+  font-size: 40px; /* Adjust the size as needed */
+  font-weight: normal;
+  color: black;
+  text-align: center;
+}
+
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Imports and setup
+
+# Install kableExtra if it's not installed
+if (!requireNamespace("kableExtra", quietly = TRUE)) {
+  install.packages("kableExtra")
+}
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(plm)
+library(readxl)
+library(lmtest)
+library(knitr)
+library(ggcorrplot)
+library(corrr)
+library(PerformanceAnalytics)
+library(kableExtra)
+library(car)
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Data Reading and Visualization
+
+data <- read_excel("C:/Users/alexg/Ambiente de Trabalho/Statistics submission/data_group_36.xlsx")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Data Groupping by regions 
+
+# Add a REGION column directly to your original dataset
+data_with_regions <- data %>%
+  mutate(
+    REGION = case_when(
+      COUNTRY %in% c("Austria", "Bulgaria", "Croatia", "Czech Republic", 
+                     "Hungary", "Poland", "Romania", "Slovakia", "Slovenia") ~ "Eastern Europe",
+      COUNTRY %in% c("Belgium", "France", "Germany", "Ireland", "Luxembourg", 
+                     "Netherlands", "United Kingdom") ~ "Western Europe",
+      COUNTRY %in% c("Denmark", "Estonia", "Finland", "Sweden") ~ "Northern Europe",
+      COUNTRY %in% c("Greece", "Italy", "Portugal", "Spain", "Republic of Cyprus") ~ "Southern Europe",
+      TRUE ~ NA_character_  # For countries not mapped
+    )
+  )
+
+# Define a function to create smaller plots of the dependent var for each region
+plot_region <- function(region_name, data) {
+  ggplot(data %>% filter(REGION == region_name), 
+         aes(x = YEAR, y = RE_SHARE, color = COUNTRY)) +
+    geom_line(size = 1.4, alpha = 0.9) +
+    facet_wrap(~ COUNTRY, scales = "free_y") +
+    labs(
+      x = "Year",
+      y = "RE Share",
+      color = "Country"
+    ) +
+    theme_minimal() +
+    theme(
+      strip.text = element_text(size = 20, face = "bold"),  # Smaller facet labels
+      axis.text.x = element_text(size = 20, angle = 45, hjust = 1),  # Smaller x-axis labels
+      axis.text.y = element_text(size = 20),  
+      legend.text = element_text(size = 20),  
+      legend.title = element_text(size = 20),  # Smaller legend title
+      plot.title = element_text(size = 30, face = "bold"),  # Smaller title
+      plot.margin = margin(10, 10, 10, 10)  # Compact margins
+    )
+}
+
+# List of regions to iterate over
+regions <- c("Western Europe", "Northern Europe", "Southern Europe", "Eastern Europe")
+
+# Generate and save plots for all regions
+for (region in regions) {
+  plot <- plot_region(region, data_with_regions)
+  ggsave(paste0(tolower(gsub(" ", "_", region)), "_plot.png"), 
+         plot = plot, width = 10, height = 10, dpi = 300)
+}
+
+```
+
+
+# Introduction
+
+Expanding renewable energy sources is vital for reducing greenhouse gas emissions, creating a cleaner environment, and decreasing dependence on volatile fossil fuel markets *[1]*. In response to the energy crisis, climate change, and global warming, the EU has adopted policies like the Renewable Energy Directive (2009/28/EC), which increased renewable energy consumption from 12.5% in 2010 to 21.8% in 2021. The updated directive (2018/2001/EU) and new 2030 targets (42.5%-45%) further emphasize this transition.
+
+```{r, fig.width=10, fig.height=7,fig.cap="RE Share Trends in Western Europe", echo=FALSE}
+plot_region("Western Europe", data_with_regions)
+
+```
+Achieving these goals relies on governance indicators such as government effectiveness, regulatory quality, control of corruption, and rule of law *[5]*, as well as political factors like the influence of left-wing parties *[2]*. This study explores how these indicators interact to drive renewable energy growth, contributing insights for policy formulation to ensure a more efficient ecological transition.
+
+# Research Question
+
+**How do political and governance indicators influence renewable energy investment in the EU?**
+
+
+# Methodology
+
+To accomplish our objectives, we used a cross-country panel data set of 24 EU member states from 2002 to 2021 to examine the relationship between the political and governance factors and the renewable energy sector growth applying different panel data models. All variables in the model were lagged by one year to address reverse causality and capture the delayed effects of governance on renewable energy development. This approach prevents misinterpretation, such as assuming government effectiveness directly causes renewable energy growth within the same year. It also accounts for the time required for policy and structural changes to influence renewable energy outcomes and vice versa.
+
+
+The baseline model according to our literature review is the following:
+
+
+$$
+\small
+REshare\_gr_{i,t} = \beta_0 + \rho_1 REshare\_gr_{i,t-1} + \rho_2 REshare\_gr_{i,t-2} + \beta_1 GE_{i,t-1} \\
+\small
++ \beta_2 RQ_{i,t-1} + \beta_3 RL_{i,t-1} + \beta_4 CC_{i,t-1} + \beta_5 LEFT_{i,t-1} + \beta_6 CENTER_{i,t-1} \\
+\small
++ \beta_7 RAE\_ELE\_gr_{i,t-1} + \beta_8 GOVSUP\_gr_{i,t-1} + \beta_9 \Delta \ln(CO2emissions)_{i,t-1} \\
+\small
++ \beta_{10} DCPS\_gr_{i,t-1} + \beta_{11} GDP\_gr_{i,t-1} + \beta_{12} GOVSPEND\_gr_{i,t-1} + \epsilon_{i,t}\\
+$$
+Before estimating the models, we present the correlation matrix between our governance and political variables, heteroskedasticity tests, and the panel specification tests, namely the F-test to choose between Pooled OLS, and Fixed Effects, and the Hausman test to choose between Fixed Effects and Random Effects.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Ensure the data is sorted for panel data operations
+panel_data <- data %>%
+  arrange(COUNTRY, YEAR) %>%     # Sort within each panel by time
+  group_by(COUNTRY) %>% # Group by panel identifier
+
+  mutate(
+  # Diffs
+  GE_diff = c(NA, diff(GE)),
+  RQ_diff = c(NA,diff(RQ)),
+  CC_diff = c(NA,diff(CC)),
+  RL_diff = c(NA,diff(RL)),
+  VA_diff = c(NA,diff(VA)),
+  PV_diff = c(NA,diff(PV)),
+  
+  # Growth rates
+  GOV_SUP_gr = c(NA, diff(log(GOV_SUP+1))),
+  RAE_ELE_gr = c(NA, diff(log(RAE_ELE))),
+  GDP_gr = c(NA, diff(log(GDP_PC_PPP))),
+  DCPS_gr = c(NA, diff(log(DCPS))),
+  GOV_SPEND_gr = c(NA, diff(log(GOV_SPEND))),
+  RE_SHARE_gr = c(NA, diff(log(RE_SHARE))),
+  CO2_EMISSIONS_gr = c(NA, diff(log(ANNUAL_CO2_EMISSIONS_PC))),
+  
+   RE_SHARE_gr_1 = dplyr::lag(RE_SHARE_gr), # Lagged RE_SHARE_gr (1 year))
+   RE_SHARE_gr_2 = dplyr::lag(RE_SHARE_gr, n=2), # Lagged RE_SHARE_gr (2 years)
+  ) %>%
+    ungroup() %>% 
+  # Remove rows with NA values in the important variables after lagging and calculating differences
+  filter(!if_any(everything(), is.na))
+  
+dependent_var <- "RE_SHARE_gr"
+independent_vars <- c("RE_SHARE_gr_1", "RE_SHARE_gr_2" , "GE_diff", "RQ_diff", "CC_diff", "RL_diff", "GOV_SUP_gr", "RAE_ELE_gr", "LEFT", "CENTER", "GDP_gr", "DCPS_gr", "GOV_SPEND_gr", "CO2_EMISSIONS_gr")
+
+panel_data_clean <- panel_data %>%
+  filter(
+    is.finite(RE_SHARE_gr) &
+    is.finite(GE_diff) &
+    is.finite(RQ_diff) &
+    is.finite(CC_diff) &
+    is.finite(RL_diff) &
+    is.finite(GOV_SUP_gr) &
+    is.finite(RAE_ELE_gr) &
+    is.finite(GDP_gr) &
+    is.finite(DCPS_gr) &
+    is.finite(GOV_SPEND_gr) &
+    is.finite(CO2_EMISSIONS_gr)&
+    is.finite(LEFT) &
+    is.finite(CENTER)
+  )
+
+```
+
+```{r, echo=FALSE}
+
+# Select the features of interest
+selected_features <- panel_data_clean[, c("GE_diff", "RQ_diff", "RL_diff" , "CC_diff", "RAE_ELE_gr" , "GOV_SUP_gr")]
+
+# Compute the correlation matrix
+cor_matrix <- cor(selected_features, use = "pairwise.complete.obs")
+
+
+if (!requireNamespace("ggcorrplot", quietly = TRUE)) {
+  install.packages("ggcorrplot")
+}
+library(ggcorrplot)
+
+# Plot the correlation matrix
+ggcorrplot(cor_matrix, 
+           method = "square",        # Use square shapes for clarity
+           type = "lower",           # Show only the lower triangle
+           lab = TRUE,               # Add correlation coefficients
+           lab_size = 5,             # Increase size of the correlation coefficients
+           colors = c("white", "#D0F0C0", "#006400"), # Simple grayscale palette
+           title = "Correlation Matrix", # Title text
+           tl.cex = 12,              # Increase size of axis labels
+           tl.srt = 45,              # Rotate axis labels for better spacing
+           legend.title = "Correlation",  # Legend title
+           show.legend = TRUE        # Display legend
+           ) +
+  theme(
+    plot.title = element_text(size = 25, face = "bold", hjust = 0.5), # Larger title with bold font
+    axis.title.x = element_blank(),  # Remove default axis titles
+    axis.title.y = element_blank()  # Remove default axis titles
+  )
+```
+
+The correlation matrix shows low to moderate correlations between variables, with no values exceeding 0.31. This suggests that multicollinearity is not a significant concern in the model.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Create the model formula
+model_formula <- as.formula(paste(dependent_var, "~", paste(independent_vars, collapse = " + ")))
+
+# Fit models with specified panel identifier and time variable
+pooled_model <- plm(model_formula, data = panel_data_clean, model = "pooling", index = c("COUNTRY", "YEAR"))
+fe_model <- plm(model_formula, data = panel_data_clean, model = "within", index = c("COUNTRY", "YEAR"))
+re_model <- plm(model_formula, data = panel_data_clean, model = "random", index = c("COUNTRY", "YEAR"))
+
+# Perform the F-test to compare pooled OLS and fixed effects
+pooled_vs_fixed_test <- pFtest(fe_model, pooled_model)
+
+# Perform other panel data tests
+lm_test <- plmtest(pooled_model, effect = "individual", type = "kw") # Lagrange Multiplier Test for random effects
+white_test_ols <- bptest(pooled_model,studentize=FALSE) # Breusch-Pagan Test for pooled OLS
+white_test_fe <- bptest(fe_model, studentize = FALSE) # Breusch-Pagan Test for fixed effects
+
+# Perform the Hausman Test to compare fixed effects and random effects
+hausman_test <- phtest(fe_model, re_model)
+
+# Extract p-values
+lm_test_pval <- lm_test$p.value
+pooled_vs_fixed_pval <- pooled_vs_fixed_test$p.value
+white_test_ols_pval <- white_test_ols$p.value
+white_test_fe_pval <- white_test_fe$p.value
+hausman_test_pval <- hausman_test$p.value
+
+# Prepare results for the table
+test_results <- data.frame(
+  Test = c("Lagrange Multiplier", "Pooled vs Fixed Effects", "White Test (Pooled OLS)", "White Test (FE)", "Hausman Test"),
+  P_Value = c(lm_test_pval, pooled_vs_fixed_pval, white_test_ols_pval, white_test_fe_pval, hausman_test_pval),
+  H0 = c(
+    "no panel effects",
+    "pooled OLS is valid",
+    "Homoskedasticity",
+    "Homoskedasticity",
+    "Random effects are consistent"
+  ),
+  Conclusion = c(
+    ifelse(lm_test_pval < 0.05, "panel effects present", "no panel effects"),
+    ifelse(pooled_vs_fixed_pval < 0.05, "fixed effects preferred", "pooled OLS valid"),
+    ifelse(white_test_ols_pval < 0.05, "Heteroskedasticity", "Homoskedasticity"),
+    ifelse(white_test_fe_pval < 0.05, "Heteroskedasticity", "Homoskedasticity"),
+    ifelse(hausman_test_pval < 0.05, "fixed effects preferred", "random effects preferred")
+  )
+)
+
+# Format the P_Value column to display scientific notation
+test_results$P_Value <- format(test_results$P_Value, scientific = TRUE, digits = 4)
+
+# Display the table
+kable(test_results, format = "html", caption = "<span style='font-size:36px;'>Panel Data Test Results</span>") %>%
+  kable_styling(full_width = FALSE, font_size = 26) %>%
+  row_spec(0, background = "transparent", color = "black") %>% # Keep header transparent with black text
+  column_spec(1, width = "150px") %>%
+  column_spec(2, width = "100px")
+
+```
+Our panel diagnostics indicate the presence of panel effects (Lagrange Multiplier Test, p = 0.027), and Fixed Effects is preferred over Pooled OLS (p = 0.001) and Random Effects (Hausman Test, p = 7.75e-06). Both Pooled OLS and Fixed Effects exhibit heteroskedasticity (White Tests, p < 0.001), and thus we need to estimate those using robust standard errors.
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+
+#print("Pooled OLS Model:")
+
+# Fit the Pooled OLS model
+pooled_ols <- plm(
+  model_formula,
+  data = panel_data_clean,
+  model = "pooling",  # Specify Pooled OLS model
+  index = c("COUNTRY", "YEAR")
+)
+
+# Check if the model was successfully fitted
+if (exists("pooled_ols")) {
+  print("Pooled OLS model successfully fitted.")
+}
+
+# Convert the plm object to an lm object for compatibility with resettest
+pooled_ols_lm <- lm(
+  formula(pooled_ols), 
+  data = na.omit(model.frame(pooled_ols))  # Use complete cases only
+)
+
+# Check if the lm object was successfully created
+if (exists("pooled_ols_lm")) {
+  print("LM object successfully created from Pooled OLS.")
+}
+
+# Perform RESET test
+tryCatch({
+  reset_test <- resettest(pooled_ols_lm, power = 2:3, type = "regressor")
+  print("RESET Test for Pooled OLS:")
+  print(reset_test)
+}, error = function(e) {
+  print("Error in performing RESET test:")
+  print(e)
+})
+```
+
+
+
+
+# Empirical Results
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+print("Fixed Effects Model:")
+
+# Create the model formula dynamically
+model_formula_updated <- as.formula(
+  paste(dependent_var, "~", paste(independent_vars, collapse = " + "))
+)
+
+# Fit the Fixed Effects model using plm
+fixed_effects <- plm(
+  model_formula_updated, 
+  data = panel_data_clean, 
+  model = "within",  # Specify Random Effects model
+  index = c("COUNTRY", "YEAR")  # Panel identifiers
+)
+
+# Display the summary of the Random Effects model
+print("Fixed Effects Model Summary:")
+model_summary <- summary(fixed_effects)
+
+# Display R-squared and Adjusted R-squared
+print(paste("R-squared: ", model_summary$r.squared["rsq"]))
+print(paste("Adjusted R-squared: ", model_summary$r.squared["adjrsq"]))
+
+# Calculate clustered standard errors
+clustered_se <- vcovHC(fixed_effects, cluster = "group", type = "HC1")
+
+# Display coefficients with clustered standard errors
+print("Coefficients with Clustered Standard Errors:")
+coeftest(fixed_effects, vcov = clustered_se)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+library(plm)
+library(sandwich)
+library(lmtest)
+
+print("Baseline Model with all the variables: ")
+
+# Create the model formula dynamically using the new subset and add time dummies
+
+
+first_subset <- c("RE_SHARE_gr_1", "RE_SHARE_gr_2" , "GE_diff", "RQ_diff", "CC_diff", "RL_diff", "GOV_SUP_gr", "RAE_ELE_gr", "LEFT", "CENTER", "GDP_gr", "DCPS_gr", "GOV_SPEND_gr", "CO2_EMISSIONS_gr")
+
+model_formula_first <- as.formula(
+  paste(dependent_var, "~", paste(first_subset, collapse = " + "), "+ factor(YEAR)")
+)
+
+# Fit the Fixed Effects model using plm
+fixed_effects_first<- plm(
+  model_formula_first, 
+  data = panel_data_clean, 
+  model = "within",  # Specify Fixed Effects model
+  index = c("COUNTRY", "YEAR")  # Panel identifiers
+)
+
+# Display the summary of the Fixed Effects model
+print("Fixed Effects Model Summary (Subset with Time Dummies):")
+model_summary_first<- summary(fixed_effects_first)
+
+# Display R-squared and Adjusted R-squared
+print(paste("R-squared: ", model_summary_first$r.squared["rsq"]))
+print(paste("Adjusted R-squared: ", model_summary_first$r.squared["adjrsq"]))
+
+# Calculate clustered standard errors for the subset
+clustered_se_first <- vcovHC(fixed_effects_first, cluster = "group", type = "HC1")
+
+# Display coefficients with clustered standard errors
+print("Coefficients with Clustered Standard Errors (Subset with Time Dummies):")
+coeftest(fixed_effects_first, vcov = clustered_se_first)
+print(model_summary_first)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+library(plm)
+library(sandwich)
+library(lmtest)
+
+print("Second Model with some variables: ")
+
+# Create the model formula dynamically using the new subset and add time dummies
+
+second_subset <- c("RE_SHARE_gr_1", "RE_SHARE_gr_2" , "GOV_SUP_gr" , "RAE_ELE_gr" , "LEFT", "DCPS_gr", "GDP_gr", "CO2_EMISSIONS_gr" , "GDP_gr")
+
+model_formula_second <- as.formula(
+  paste(dependent_var, "~", paste(second_subset, collapse = " + "), "+ factor(YEAR)")
+)
+
+# Fit the Fixed Effects model using plm
+fixed_effects_second<- plm(
+  model_formula_second, 
+  data = panel_data_clean, 
+  model = "within",  # Specify Fixed Effects model
+  index = c("COUNTRY", "YEAR")  # Panel identifiers
+)
+
+# Display the summary of the Fixed Effects model
+print("Fixed Effects Model Summary (Subset with Time Dummies):")
+model_summary_second<- summary(fixed_effects_second)
+
+# Display R-squared and Adjusted R-squared
+print(paste("R-squared: ", model_summary_second$r.squared["rsq"]))
+print(paste("Adjusted R-squared: ", model_summary_second$r.squared["adjrsq"]))
+
+# Calculate clustered standard errors for the subset
+clustered_se_second <- vcovHC(fixed_effects_second, cluster = "group", type = "HC1")
+
+# Display coefficients with clustered standard errors
+print("Coefficients with Clustered Standard Errors (Subset with Time Dummies):")
+coeftest(fixed_effects_second, vcov = clustered_se_second)
+print(model_summary_second)
+```
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+library(plm)
+library(sandwich)
+library(lmtest)
+
+print("Second Model with some variables: ")
+
+# Create the model formula dynamically using the new subset and add time dummies
+
+third_subset <- c("RE_SHARE_gr_1", "RE_SHARE_gr_2" , "GOV_SUP_gr" , "RAE_ELE_gr" , "CENTER", "GDP_gr", "DCPS_gr", "GOV_SPEND_gr", "CO2_EMISSIONS_gr")
+
+model_formula_third <- as.formula(
+  paste(dependent_var, "~", paste(third_subset, collapse = " + "), "+ factor(YEAR)")
+)
+
+# Fit the Fixed Effects model using plm
+fixed_effects_third<- plm(
+  model_formula_third, 
+  data = panel_data_clean, 
+  model = "within",  # Specify Fixed Effects model
+  index = c("COUNTRY", "YEAR")  # Panel identifiers
+)
+
+# Display the summary of the Fixed Effects model
+print("Fixed Effects Model Summary (Subset with Time Dummies):")
+model_summary_third<- summary(fixed_effects_third)
+
+# Display R-squared and Adjusted R-squared
+print(paste("R-squared: ", model_summary_third$r.squared["rsq"]))
+print(paste("Adjusted R-squared: ", model_summary_third$r.squared["adjrsq"]))
+
+# Calculate clustered standard errors for the subset
+clustered_se_third <- vcovHC(fixed_effects_third, cluster = "group", type = "HC1")
+
+# Display coefficients with clustered standard errors
+print("Coefficients with Clustered Standard Errors (Subset with Time Dummies):")
+coeftest(fixed_effects_third, vcov = clustered_se_third)
+print(model_summary_third)
+```
+
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+rss_with_time <- deviance(fixed_effects_first)  # Residual Sum of Squares (with time dummies)
+rss_without_time <- deviance(fixed_effects)   # Residual Sum of Squares (without time dummies)
+
+n_time_dummies <- length(unique(panel_data_clean$YEAR)) - 1
+df_time <- n_time_dummies
+df_residual <- nrow(panel_data_clean) - length(independent_vars) - n_time_dummies
+
+f_stat <- ((rss_without_time - rss_with_time) / df_time) / (rss_with_time / df_residual)
+p_value_f_stat <- pf(f_stat, df_time, df_residual, lower.tail = FALSE)
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+library(plm)
+library(sandwich)
+library(lmtest)
+
+print("Second Model with some variables: ")
+
+# Create the model formula dynamically using the new subset and add time dummies
+
+fourth_subset <- c("RE_SHARE_gr_1", "RE_SHARE_gr_2" , "GE_diff" ,"RQ_diff" , "CC_diff", "RL_diff", "DCPS_gr", "GOV_SPEND_gr", "CO2_EMISSIONS_gr")
+
+model_formula_fourth <- as.formula(
+  paste(dependent_var, "~", paste(fourth_subset, collapse = " + "), "+ factor(YEAR)")
+)
+
+# Fit the Fixed Effects model using plm
+fixed_effects_fourth<- plm(
+  model_formula_fourth, 
+  data = panel_data_clean, 
+  model = "within",  # Specify Fixed Effects model
+  index = c("COUNTRY", "YEAR")  # Panel identifiers
+)
+
+# Display the summary of the Fixed Effects model
+print("Fixed Effects Model Summary (Subset with Time Dummies):")
+model_summary_fourth<- summary(fixed_effects_fourth)
+
+# Display R-squared and Adjusted R-squared
+print(paste("R-squared: ", model_summary_fourth$r.squared["rsq"]))
+print(paste("Adjusted R-squared: ", model_summary_fourth$r.squared["adjrsq"]))
+
+# Calculate clustered standard errors for the subset
+clustered_se_fourth <- vcovHC(fixed_effects_fourth, cluster = "group", type = "HC1")
+
+# Display coefficients with clustered standard errors
+print("Coefficients with Clustered Standard Errors (Subset with Time Dummies):")
+coeftest(fixed_effects_fourth, vcov = clustered_se_fourth)
+print(model_summary_fourth)
+```
+
+
+As previously mentioned, we chose to estimate our model using fixed effects because our investigation did reveal evidence suggesting correlation between the model’s country-specific effects and the explanatory variables. Moreover, we performed an F-test to assess the statistical significance of time dummies, and it turns out that this test yielded a p-value of `r round(p_value_f_stat, 5)`, which indicates that the time dummies are statistically significant.
+
+##
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=TRUE}
+library(modelsummary)
+library(kableExtra)
+
+
+models <- list("Fixed Effects without Time Dummies" = fixed_effects, "Fixed Effects Full Model w/ Time Dummies" = fixed_effects_first , "Fixed Effects w/ LEFT variable" = fixed_effects_second , "Fixed Effects Third Model" = fixed_effects_third , "Fixed Effects Fourth Model" = fixed_effects_fourth)
+
+robust_se_list <- list("Fixed Effects Model" = clustered_se, "Fixed Effects Model w/ Time Dummies" = clustered_se_first , "Fixed Effects Second Model" = clustered_se_second , "Fixed Effects Third Model" = clustered_se_third , "Fixed Effects Fourth Model" = clustered_se_fourth)
+
+
+# Create the table using modelsummary
+table_output <- modelsummary(
+  models, 
+  vcov = robust_se_list,  # Pass robust standard errors
+  title = "<span style='font-size:36px;'>Regression Models with Robust Standard Errors</span>",  # Change title size
+  coef_omit = "^factor\\(YEAR\\)",  # Omit year dummies
+  gof_omit = "Std.Errors|RMSE|AIC|BIC" ,
+  stars = TRUE, # Add significance stars to coefficient
+  output = "kableExtra"
+)
+
+# Display the table
+#table_output
+
+# Make the table smaller using kableExtra (change font size)
+table_output %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), font_size = 28)
+```
+
+
+In the first model (Fixed Effects without Time Dummies), DCPS_gr has a positive coefficient (0.175) and is statistically significant at the 10% level. This relationship could imply that greater access to domestic credit facilitates investments in renewable energy projects, allowing private entities to fund clean energy infrastructure, adopt innovative technologies, or transition from fossil fuels to renewable sources. However, since the significance is relatively weak (10% level), the evidence is not robust. 
+
+The negative and highly significant coefficient for ANNUAL_CO2_EMISSIONS_gr across all the specifications indicates that a decrease in CO2 emissions growth is associated with an increase in the renewable energy share. This relationship likely reflects the impact of stronger environmental policies (e.g., carbon pricing, emissions caps, or renewable subsidies) that reduce CO2 emissions while promoting renewables. Additionally, it may signify a transition away from fossil fuels toward cleaner energy sources.
+
+The significant and negative coefficient for RE_SHARE_gr_2 indicates that renewable energy share growth is negatively influenced by its levels two periods ago. This suggests a time-lagged effect where higher growth in renewable energy share in the past may lead to slower current growth, possibly due to diminishing returns. 
+
+The unexpected lack of significance for governance indicators and some political variables (RAE_ELE and GOV_SUP) suggests these factors do not directly influence renewable energy share growth. This goes against our literature review and indicates that renewable energy investments are likely driven more by market dynamics, technological progress, and specific energy policies than by governance quality or political alignment.
+
+One notable finding, consistent with the literature, is that being under a left-leaning government is associated with an increase of 0.034 percentage points reflecting a tendency for left-leaning governments to prioritize green policies and environmental initiatives. In contrast, CENTER shows the opposite effect and has the same magnitude in the opposite direction, suggesting a potential focus on less green policies or a more balanced approach that may not heavily favor renewable energy investments.
+
+# Conclusion and Future Research
+
+The key findings of our study was the confirmation of left-leaning governments being linked to  increases in renewable energy growth, likely due to their emphasis on green policies, while centrist governments show the opposite effect, suggesting less prioritization of renewable energy initiatives. Moreover, we have identified that private financing can play a role in promoting renewable energy investments, although the relationship is not robust. The negative and highly significant relationship between CO2 emissions growth (ANNUAL_CO2_EMISSIONS_gr) and renewable energy share reflects the impact of environmental policies and the transition away from fossil fuels. The negative time-lagged effect of renewable energy share (RE_SHARE_gr_2) emphasizes the need for consistent policy measures to sustain growth.
+
+One key limitation of our study is the use of lagged dependent variables, which introduces potential endogeneity issues. The inclusion of RE_SHARE_gr_2 might lead to biased and inconsistent estimates due to correlations with unobserved factors affecting renewable energy growth. A more robust approach, such as a Generalized Method of Moments (GMM) estimator, could address this limitation by using instrumental variables to control for endogeneity. GMM would also better capture the dynamic nature of the panel data, providing more reliable estimates and enabling a clearer interpretation of lagged effects.
+
+Additionally, our model appears to be functionally misspecified, as indicated by the rejection of the null hypothesis of the RESET Test having a  (p-value: `r format(reset_test[4], digits = 3)`) . This suggests that the functional form of the model does not adequately capture all relevant relationships or non-linearities, potentially omitting important variables or interactions. Future research should explore alternative model specifications and include robustness checks.
+
+
+
+# References
+
+[1] Bhattacharyya, S. C. (2009). Fossil-fuel dependence and vulnerability of electricity generation: Case of selected European countries. https://www.sciencedirect.com/science/article/pii/S0301421509001360
+
+[2] 2. Cadoret, I., & Padovano, F. (2016). The political drivers of renewable energies policies. https://www.sciencedirect.com/science/article/pii/S0140988316300408
+
+[3] 3. Fredriksson, P.G., & Millimet, D.L. (2004). Electoral rules and environmental policy. https://www.sciencedirect.com/science/article/pii/S0165176504000886
+
+[4] 4. Fredriksson, P. G., & Svensson, J. (2003). Political instability, corruption and policy formation: the case of environmental policy. https://www.sciencedirect.com/science/article/pii/S0047272702000361
+
+[5] 5. Kaufmann, D., Kraay, A., & Mastruzzi, M. (2010). The Worldwide Governance Indicators. https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1682130
+
